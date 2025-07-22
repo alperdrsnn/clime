@@ -253,7 +253,12 @@ func (p *ProgressBar) Render() string {
 
 // Print renders and prints the progress bar
 func (p *ProgressBar) Print() {
-	fmt.Print("\r" + p.Render())
+	rendered := p.Render()
+	if p.IsFinished() {
+		fmt.Print("\r" + rendered + "\n")
+	} else {
+		fmt.Print("\r" + rendered)
+	}
 }
 
 // Println renders and prints the progress bar with a newline
@@ -264,7 +269,7 @@ func (p *ProgressBar) Println() {
 // Finish completes the progress bar
 func (p *ProgressBar) Finish() {
 	p.Set(p.total)
-	p.Println()
+	fmt.Print("\r" + p.Render() + "\n")
 }
 
 // IsFinished returns true if the progress bar is finished
