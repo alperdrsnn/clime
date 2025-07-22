@@ -392,31 +392,49 @@ func (b *Box) renderTopBorder() string {
 			maxTitleLen := borderWidth - 4
 			if maxTitleLen > 0 {
 				title := TruncateString(b.title, maxTitleLen)
-				border = b.style.TopLeft + "─" + title + "─" + strings.Repeat(b.style.Horizontal, borderWidth-len(title)-2) + b.style.TopRight
+				leftPart := b.style.TopLeft + "─"
+				rightPart := "─" + strings.Repeat(b.style.Horizontal, borderWidth-len(title)-2) + b.style.TopRight
+				
+				if b.borderColor != nil {
+					leftPart = b.borderColor.Sprint(leftPart)
+					rightPart = b.borderColor.Sprint(rightPart)
+				}
+				
+				if b.titleColor != nil {
+					title = b.titleColor.Sprint(title)
+				}
+				
+				border = leftPart + title + rightPart
 			} else {
 				border = b.style.TopLeft + strings.Repeat(b.style.Horizontal, borderWidth) + b.style.TopRight
+				if b.borderColor != nil {
+					border = b.borderColor.Sprint(border)
+				}
 			}
 		} else {
 			leftPadding := (borderWidth - titleLen - 2) / 2
 			rightPadding := borderWidth - titleLen - 2 - leftPadding
 
-			border = b.style.TopLeft + strings.Repeat(b.style.Horizontal, leftPadding) + " "
-			if b.titleColor != nil {
-				border += b.titleColor.Sprint(b.title)
-			} else {
-				border += b.title
+			leftPart := b.style.TopLeft + strings.Repeat(b.style.Horizontal, leftPadding) + " "
+			rightPart := " " + strings.Repeat(b.style.Horizontal, rightPadding) + b.style.TopRight
+			
+			if b.borderColor != nil {
+				leftPart = b.borderColor.Sprint(leftPart)
+				rightPart = b.borderColor.Sprint(rightPart)
 			}
-			border += " " + strings.Repeat(b.style.Horizontal, rightPadding) + b.style.TopRight
+			
+			titlePart := b.title
+			if b.titleColor != nil {
+				titlePart = b.titleColor.Sprint(b.title)
+			}
+			
+			border = leftPart + titlePart + rightPart
 		}
 	} else {
 		border = b.style.TopLeft + strings.Repeat(b.style.Horizontal, borderWidth) + b.style.TopRight
-	}
-
-	if b.borderColor != nil {
-		if b.title != "" && b.titleColor != nil {
-			return b.borderColor.Sprint(border)
+		if b.borderColor != nil {
+			border = b.borderColor.Sprint(border)
 		}
-		return b.borderColor.Sprint(border)
 	}
 
 	return border
