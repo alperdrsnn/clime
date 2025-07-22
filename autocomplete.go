@@ -27,45 +27,44 @@ type AutoCompleteResult struct {
 	Index int
 }
 
+// AutoComplete prompts for input with autocomplete functionality
 func AutoComplete(config AutoCompleteConfig) (string, error) {
 	if config.MaxResults == 0 {
 		config.MaxResults = 10
 	}
-	if config.MinLength == 0 {
-		config.MinLength = 1
+	if config.MinLength < 0 {
+		config.MinLength = 0
 	}
 
-	for {
-		prompt := buildAutoCompletePrompt(config)
-		fmt.Print(prompt)
+	prompt := buildAutoCompletePrompt(config)
+	fmt.Print(prompt)
 
-		input, err := readLineWithAutoComplete(config)
-		if err != nil {
+	input, err := readLineWithAutoComplete(config)
+	if err != nil {
+		return "", err
+	}
+
+	input = strings.TrimSpace(input)
+
+	if input == "" && !config.Required {
+		return "", nil
+	}
+
+	if config.Required && input == "" {
+		return "", fmt.Errorf("this field is required")
+	}
+
+	if config.Transform != nil {
+		input = config.Transform(input)
+	}
+
+	if config.Validate != nil {
+		if err := config.Validate(input); err != nil {
 			return "", err
 		}
-
-		if strings.TrimSpace(input) == "" && !config.Required {
-			return "", nil
-		}
-
-		if config.Required && strings.TrimSpace(input) == "" {
-			Error.Println("This field is required")
-			continue
-		}
-
-		if config.Transform != nil {
-			input = config.Transform(input)
-		}
-
-		if config.Validate != nil {
-			if err := config.Validate(input); err != nil {
-				Error.Printf("Validation failed: %v\n", err)
-				continue
-			}
-		}
-
-		return input, nil
 	}
+
+	return input, nil
 }
 
 // readLineWithAutoComplete reads input with autocomplete functionality
@@ -82,81 +81,99 @@ func readLineWithAutoComplete(config AutoCompleteConfig) (string, error) {
 
 	var input strings.Builder
 	var suggestions []AutoCompleteResult
+	selectedSuggestion := 0
 	showingSuggestions := false
 
+	redrawLine := func() {
+		if showingSuggestions {
+			clearAutoCompleteSuggestions(len(suggestions))
+			showingSuggestions = false
+		}
+		
+		suggestions = findSuggestions(input.String(), config)
+		if len(suggestions) > 0 && input.Len() >= config.MinLength {
+			if selectedSuggestion >= len(suggestions) {
+				selectedSuggestion = 0
+			}
+			showSuggestions(suggestions, selectedSuggestion, input.String())
+			showingSuggestions = true
+		}
+	}
+
 	for {
-		b := make([]byte, 1)
-		_, err := os.Stdin.Read(b)
+		b := make([]byte, 4)
+		n, err := os.Stdin.Read(b)
 		if err != nil {
 			return "", err
 		}
 
-		char := b[0]
-
-		switch char {
-		case 13:
-			if showingSuggestions {
-				clearSuggestions(len(suggestions))
-				showingSuggestions = false
-			}
-			fmt.Println()
-			return input.String(), nil
-
-		case 127, 8:
-			if input.Len() > 0 {
-				inputStr := input.String()
-				input.Reset()
-				input.WriteString(inputStr[:len(inputStr)-1])
-
-				fmt.Print("\b \b")
-
+		if n == 1 {
+			switch b[0] {
+			case 13:
 				if showingSuggestions {
-					clearSuggestions(len(suggestions))
+					clearAutoCompleteSuggestions(len(suggestions))
 				}
-				suggestions = findSuggestions(input.String(), config)
-				if len(suggestions) > 0 && input.Len() >= config.MinLength {
-					displaySuggestions(suggestions)
-					showingSuggestions = true
-				} else {
+				fmt.Println()
+				return input.String(), nil
+
+			case 127, 8:
+				if input.Len() > 0 {
+					inputStr := input.String()
+					input.Reset()
+					input.WriteString(inputStr[:len(inputStr)-1])
+					
+					fmt.Print("\b \b")
+					selectedSuggestion = 0
+					redrawLine()
+				}
+
+			case 9:
+				if showingSuggestions && len(suggestions) > 0 {
+					clearAutoCompleteSuggestions(len(suggestions))
 					showingSuggestions = false
+					
+					backspaces := input.Len()
+					input.Reset()
+					input.WriteString(suggestions[selectedSuggestion].Value)
+					
+					for i := 0; i < backspaces; i++ {
+						fmt.Print("\b")
+					}
+					fmt.Print(input.String())
+				}
+
+			case 27:
+				continue
+
+			default:
+				if b[0] >= 32 && b[0] <= 126 {
+					input.WriteByte(b[0])
+					fmt.Printf("%c", b[0])
+					selectedSuggestion = 0
+					redrawLine()
 				}
 			}
-
-		case 9:
-			if len(suggestions) > 0 {
-				if showingSuggestions {
-					clearSuggestions(len(suggestions))
+		} else if n >= 3 && b[0] == 27 && b[1] == 91 {
+			switch b[2] {
+			case 65:
+				if showingSuggestions && len(suggestions) > 0 {
+					if selectedSuggestion > 0 {
+						selectedSuggestion--
+					} else {
+						selectedSuggestion = len(suggestions) - 1
+					}
+					clearAutoCompleteSuggestions(len(suggestions))
+					showSuggestions(suggestions, selectedSuggestion, input.String())
 				}
-
-				suggestion := suggestions[0].Value
-				input.Reset()
-				input.WriteString(suggestion)
-
-				clearCurrentLine()
-				prompt := buildAutoCompletePrompt(config)
-				fmt.Print(prompt + suggestion)
-
-				showingSuggestions = false
-			}
-
-		case 27:
-			nextB := make([]byte, 2)
-			os.Stdin.Read(nextB)
-
-		default:
-			if char >= 32 && char <= 126 {
-				input.WriteByte(char)
-				fmt.Printf("%c", char)
-
-				if showingSuggestions {
-					clearSuggestions(len(suggestions))
-				}
-				suggestions = findSuggestions(input.String(), config)
-				if len(suggestions) > 0 && input.Len() >= config.MinLength {
-					displaySuggestions(suggestions)
-					showingSuggestions = true
-				} else {
-					showingSuggestions = false
+			case 66:
+				if showingSuggestions && len(suggestions) > 0 {
+					if selectedSuggestion < len(suggestions)-1 {
+						selectedSuggestion++
+					} else {
+						selectedSuggestion = 0
+					}
+					clearAutoCompleteSuggestions(len(suggestions))
+					showSuggestions(suggestions, selectedSuggestion, input.String())
 				}
 			}
 		}
@@ -245,52 +262,40 @@ func fuzzyMatchScore(input, option string) int {
 	return score
 }
 
-// displaySuggestions displays autocomplete suggestions
-func displaySuggestions(suggestions []AutoCompleteResult) {
-	fmt.Println()
-
+// displayAutoCompleteSuggestions displays autocomplete suggestions
+func showSuggestions(suggestions []AutoCompleteResult, selected int, currentInput string) {
+	fmt.Print("\n")
+	
 	for i, suggestion := range suggestions {
-		prefix := "  "
-		if i == 0 {
-			prefix = Muted.Sprint("▶ ")
+		if i == selected {
+			fmt.Printf("  %s %s\n", Success.Sprint("→"), BoldColor.Sprint(suggestion.Value))
+		} else {
+			fmt.Printf("    %s\n", DimColor.Sprint(suggestion.Value))
 		}
-		fmt.Printf("%s%s\n", prefix, DimColor.Sprint(suggestion.Value))
 	}
-
-	moveCursorUp(len(suggestions) + 1)
+	
+	fmt.Printf("\033[%dA", len(suggestions)+1)
+	fmt.Print("\033[999C")
 }
 
-// clearSuggestions clears the displayed suggestions
-func clearSuggestions(count int) {
-	if count == 0 {
+// clearAutoCompleteSuggestions clears autocomplete suggestions
+func clearAutoCompleteSuggestions(lines int) {
+	if lines <= 0 {
 		return
 	}
-
-	fmt.Printf("\n")
-	for i := 0; i < count; i++ {
+	
+	fmt.Print("\n")
+	for i := 0; i < lines; i++ {
 		fmt.Print("\033[2K")
-		if i < count-1 {
+		if i < lines-1 {
 			fmt.Print("\033[B")
 		}
 	}
-
-	fmt.Printf("\033[%dA", count)
-	fmt.Print("\r")
+	fmt.Printf("\033[%dA", lines+1)
+	fmt.Print("\033[999C")
 }
 
-// clearCurrentLine clears the current line
-func clearCurrentLine() {
-	fmt.Print("\033[2K\r")
-}
-
-// moveCursorUp moves cursor up by n lines
-func moveCursorUp(n int) {
-	if n > 0 {
-		fmt.Printf("\033[%dA", n)
-	}
-}
-
-// buildAutoCompletePrompt builds the autocomplete prompt display
+// buildAutoCompletePrompt builds the autocomplete prompt
 func buildAutoCompletePrompt(config AutoCompleteConfig) string {
 	prompt := Info.Sprint("? ") + config.Label
 
@@ -309,8 +314,12 @@ func buildAutoCompletePrompt(config AutoCompleteConfig) string {
 // AskWithOptions prompts for input with predefined options
 func AskWithOptions(label string, options []string) (string, error) {
 	return AutoComplete(AutoCompleteConfig{
-		Label:   label,
-		Options: options,
+		Label:         label,
+		Options:       options,
+		MinLength:     0,
+		MaxResults:    8,
+		CaseSensitive: false,
+		FuzzyMatch:    true,
 	})
 }
 
@@ -349,7 +358,6 @@ func AskWithCommandCompletion(label string) (string, error) {
 	})
 }
 
-// AutoCompleteBuilder provides a fluent interface for building autocomplete prompts
 type AutoCompleteBuilder struct {
 	config AutoCompleteConfig
 }

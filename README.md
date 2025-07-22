@@ -193,12 +193,24 @@ age, err := clime.AskNumber("Enter your age:")
 // Confirmation
 confirmed, err := clime.AskConfirm("Continue?", true)
 
-// Autocomplete
+// Single choice with arrow key navigation
+frameworks := []string{"React", "Vue", "Angular", "Svelte"}
+choice, err := clime.AskChoice("Select framework:", frameworks...)
+
+// Multi-choice with arrow key navigation
+languages := []string{"Go", "JavaScript", "Python", "Rust"}
+choices, err := clime.AskMultiChoice("Select languages:", languages...)
+
+// Autocomplete with arrow key navigation
 options := []string{"apple", "banana", "cherry", "date"}
+choice, err := clime.AskWithOptions("Choose a fruit:", options)
+
+// Advanced autocomplete
 choice, err := clime.AutoComplete(clime.AutoCompleteConfig{
     Label: "Choose a fruit:",
     Options: options,
     FuzzyMatch: true,
+    MaxResults: 5,
 })
 ```
 
@@ -278,7 +290,7 @@ Clime supports a full range of colors:
 - [x] **Progress Bars**: Single and multi-bar with ETA/rate display
 - [x] **Data Tables**: Column styling, alignment, color support
 - [x] **Decorative Boxes**: 4+ border styles with title support
-- [x] **Interactive Prompts**: Text, password, email, number input
+- [x] **Interactive Prompts**: Text, password, email, number input with arrow key navigation
 - [x] **Autocomplete**: Fuzzy matching, customizable options
 - [x] **Banners**: Success, warning, error, info with icons
 - [x] **Cross-platform**: Windows, macOS, Linux support

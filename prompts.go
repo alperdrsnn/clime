@@ -105,12 +105,84 @@ func Confirm(config ConfirmConfig) (bool, error) {
 	}
 }
 
-// Select shows a single selection prompt
+// Select shows a single selection prompt with arrow key navigation
 func Select(config SelectConfig) (int, error) {
 	if len(config.Options) == 0 {
 		return 0, fmt.Errorf("no options provided")
 	}
 
+	if term.IsTerminal(int(os.Stdin.Fd())) {
+		return selectInteractive(config)
+	}
+
+	return selectFallback(config)
+}
+
+func selectInteractive(config SelectConfig) (int, error) {
+	currentSelection := config.Default
+	if currentSelection >= len(config.Options) {
+		currentSelection = 0
+	}
+
+	HideCursor()
+	defer ShowCursor()
+
+	displaySelectOptions(config, currentSelection)
+
+	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
+	if err != nil {
+		return selectFallback(config)
+	}
+	defer term.Restore(int(os.Stdin.Fd()), oldState)
+
+	for {
+		b := make([]byte, 4)
+		n, err := os.Stdin.Read(b)
+		if err != nil {
+			return 0, err
+		}
+
+		if n == 1 {
+			switch b[0] {
+			case 13:
+				clearSelectDisplay(len(config.Options) + 2)
+				fmt.Printf("%s %s\n", Info.Sprint("?"), config.Label)
+				fmt.Printf("  %s %s\n", Success.Sprint("→"), config.Options[currentSelection])
+				return currentSelection, nil
+				
+			case 27:
+				if n == 1 {
+					clearSelectDisplay(len(config.Options) + 2)
+					return 0, fmt.Errorf("selection cancelled")
+				}
+				
+			case 'q', 'Q':
+				clearSelectDisplay(len(config.Options) + 2)
+				return 0, fmt.Errorf("selection cancelled")
+			}
+		} else if n >= 3 && b[0] == 27 && b[1] == 91 {
+			switch b[2] {
+			case 65:
+				if currentSelection > 0 {
+					currentSelection--
+				} else {
+					currentSelection = len(config.Options) - 1
+				}
+				refreshSelectDisplay(config, currentSelection)
+				
+			case 66:
+				if currentSelection < len(config.Options)-1 {
+					currentSelection++
+				} else {
+					currentSelection = 0
+				}
+				refreshSelectDisplay(config, currentSelection)
+			}
+		}
+	}
+}
+
+func selectFallback(config SelectConfig) (int, error) {
 	fmt.Println(Info.Sprint("? ") + config.Label)
 
 	for i, option := range config.Options {
@@ -137,18 +209,127 @@ func Select(config SelectConfig) (int, error) {
 	selection, err := strconv.Atoi(input)
 	if err != nil || selection < 1 || selection > len(config.Options) {
 		Error.Printf("Invalid selection. Please choose a number between 1 and %d\n", len(config.Options))
-		return Select(config)
+		return selectFallback(config)
 	}
 
 	return selection - 1, nil
 }
 
-// MultiSelect shows a multi-selection prompt
+func displaySelectOptions(config SelectConfig, currentSelection int) {
+	fmt.Printf("%s %s\n", Info.Sprint("?"), config.Label)
+	fmt.Printf("%s\n", Muted.Sprint("(↑/↓ navigate, Enter select, Esc cancel)"))
+	
+	for i, option := range config.Options {
+		if i == currentSelection {
+			fmt.Printf("  %s %s\n", Success.Sprint("→"), BoldColor.Sprint(option))
+		} else {
+			fmt.Printf("    %s\n", option)
+		}
+	}
+}
+
+func refreshSelectDisplay(config SelectConfig, currentSelection int) {
+	fmt.Printf("\033[%dA", len(config.Options)+2)
+	fmt.Print("\033[J")
+	displaySelectOptions(config, currentSelection)
+}
+
+func clearSelectDisplay(lines int) {
+	fmt.Printf("\033[%dA", lines)
+	fmt.Print("\033[J")
+}
+
+// MultiSelect shows a multi-selection prompt with arrow key navigation
 func MultiSelect(config SelectConfig) ([]int, error) {
 	if len(config.Options) == 0 {
 		return nil, fmt.Errorf("no options provided")
 	}
 
+	if term.IsTerminal(int(os.Stdin.Fd())) {
+		return multiSelectInteractive(config)
+	}
+
+	return multiSelectFallback(config)
+}
+
+func multiSelectInteractive(config SelectConfig) ([]int, error) {
+	currentSelection := 0
+	selected := make(map[int]bool)
+
+	HideCursor()
+	defer ShowCursor()
+
+	displayMultiSelectOptions(config, currentSelection, selected)
+
+	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
+	if err != nil {
+		return multiSelectFallback(config)
+	}
+	defer term.Restore(int(os.Stdin.Fd()), oldState)
+
+	for {
+		b := make([]byte, 4)
+		n, err := os.Stdin.Read(b)
+		if err != nil {
+			return nil, err
+		}
+
+		if n == 1 {
+			switch b[0] {
+			case 13:
+				clearMultiSelectDisplay(len(config.Options) + 2)
+				var result []int
+				for i := 0; i < len(config.Options); i++ {
+					if selected[i] {
+						result = append(result, i)
+					}
+				}
+				
+				fmt.Printf("%s %s\n", Info.Sprint("?"), config.Label)
+				if len(result) > 0 {
+					fmt.Printf("  %s Selected %d option(s)\n", Success.Sprint("→"), len(result))
+				} else {
+					fmt.Printf("  %s No options selected\n", Warning.Sprint("→"))
+				}
+				return result, nil
+				
+			case 27:
+				if n == 1 {
+					clearMultiSelectDisplay(len(config.Options) + 2)
+					return nil, fmt.Errorf("selection cancelled")
+				}
+				
+			case 32:
+				selected[currentSelection] = !selected[currentSelection]
+				refreshMultiSelectDisplay(config, currentSelection, selected)
+				
+			case 'q', 'Q':
+				clearMultiSelectDisplay(len(config.Options) + 2)
+				return nil, fmt.Errorf("selection cancelled")
+			}
+		} else if n >= 3 && b[0] == 27 && b[1] == 91 {
+			switch b[2] {
+			case 65:
+				if currentSelection > 0 {
+					currentSelection--
+				} else {
+					currentSelection = len(config.Options) - 1
+				}
+				refreshMultiSelectDisplay(config, currentSelection, selected)
+				
+			case 66:
+				if currentSelection < len(config.Options)-1 {
+					currentSelection++
+				} else {
+					currentSelection = 0
+				}
+				refreshMultiSelectDisplay(config, currentSelection, selected)
+			}
+		}
+	}
+}
+
+func multiSelectFallback(config SelectConfig) ([]int, error) {
 	selected := make(map[int]bool)
 
 	for {
@@ -198,6 +379,36 @@ func MultiSelect(config SelectConfig) ([]int, error) {
 		index := selection - 1
 		selected[index] = !selected[index]
 	}
+}
+
+func displayMultiSelectOptions(config SelectConfig, currentSelection int, selected map[int]bool) {
+	fmt.Printf("%s %s\n", Info.Sprint("?"), config.Label)
+	fmt.Printf("%s\n", Muted.Sprint("(↑/↓ navigate, Space select, Enter confirm, Esc cancel)"))
+	
+	for i, option := range config.Options {
+		marker := "○"
+		if selected[i] {
+			marker = Success.Sprint("●")
+		}
+		
+		if i == currentSelection {
+			fmt.Printf("  %s %s %s\n", Success.Sprint("→"), marker, BoldColor.Sprint(option))
+		} else {
+			fmt.Printf("    %s %s\n", marker, option)
+		}
+	}
+}
+
+func refreshMultiSelectDisplay(config SelectConfig, currentSelection int, selected map[int]bool) {
+	fmt.Printf("\033[%dA", len(config.Options)+2)
+	fmt.Print("\033[J")
+	displayMultiSelectOptions(config, currentSelection, selected)
+}
+
+// clearMultiSelectDisplay clears the multi-selection display
+func clearMultiSelectDisplay(lines int) {
+	fmt.Printf("\033[%dA", lines)
+	fmt.Print("\033[J")
 }
 
 // Ask prompts for a simple text input
@@ -306,7 +517,6 @@ func buildInputPrompt(config InputConfig) string {
 	return prompt
 }
 
-// readLine reads a line from stdin
 func readLine() (string, error) {
 	reader := bufio.NewReader(os.Stdin)
 	line, _, err := reader.ReadLine()
@@ -316,10 +526,8 @@ func readLine() (string, error) {
 	return strings.TrimRightFunc(string(line), unicode.IsSpace), nil
 }
 
-// readPassword reads a password (masked input) from stdin
 func readPassword() (string, error) {
 	if !term.IsTerminal(int(os.Stdin.Fd())) {
-		// Fallback to regular input if not a terminal
 		return readLine()
 	}
 
@@ -328,11 +536,10 @@ func readPassword() (string, error) {
 		return "", err
 	}
 
-	fmt.Println() // Add newline after password input
+	fmt.Println()
 	return string(password), nil
 }
 
-// EmailValidator validates email format
 func EmailValidator(email string) error {
 	if !strings.Contains(email, "@") {
 		return fmt.Errorf("email must contain @")
@@ -347,7 +554,6 @@ func EmailValidator(email string) error {
 	return nil
 }
 
-// MinLengthValidator creates a validator for minimum length
 func MinLengthValidator(min int) func(string) error {
 	return func(input string) error {
 		if len(input) < min {
@@ -357,7 +563,6 @@ func MinLengthValidator(min int) func(string) error {
 	}
 }
 
-// MaxLengthValidator creates a validator for maximum length
 func MaxLengthValidator(max int) func(string) error {
 	return func(input string) error {
 		if len(input) > max {
@@ -367,7 +572,6 @@ func MaxLengthValidator(max int) func(string) error {
 	}
 }
 
-// NumberValidator validates numeric input
 func NumberValidator(input string) error {
 	_, err := strconv.Atoi(input)
 	if err != nil {
@@ -376,7 +580,6 @@ func NumberValidator(input string) error {
 	return nil
 }
 
-// URLValidator validates URL format
 func URLValidator(url string) error {
 	url = strings.ToLower(url)
 	if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
