@@ -114,9 +114,14 @@ func main() {
 	box.Println()
 
 	clime.PrintSuccessBox("Success", "Everything is working perfectly!")
+	fmt.Println()
 	clime.PrintWarningBox("Warning", "Please check your configuration.")
+	fmt.Println()
 	clime.PrintErrorBox("Error", "Something went wrong.")
 	fmt.Println()
 
-	clime.SuccessLine("Demo completed! Clime makes CLI apps beautiful and easy! ✨")
+	clime.SuccessLine("Demo completed! Clime makes CLI apps beautiful and easy!")
+
+	fmt.Println("\nPress Enter to exit...")
+	fmt.Scanln()
 }

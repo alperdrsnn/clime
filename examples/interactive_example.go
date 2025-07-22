@@ -144,4 +144,7 @@ func main() {
 		Println()
 
 	clime.SuccessLine("Interactive demo finished!")
+
+	fmt.Println("\nPress Enter to exit...")
+	fmt.Scanln()
 }

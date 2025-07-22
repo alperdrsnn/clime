@@ -192,7 +192,7 @@ func demonstrateAdvancedBoxes() {
 		AddEmptyLine().
 		AddText("New features include enhanced styling, better performance, and improved cross-platform support.").
 		AddEmptyLine().
-		AddText("Visit github.com/clime/clime for more information.").
+		AddText("Visit github.com/alperdrsnn/clime for more information.").
 		AddEmptyLine()
 
 	announcement.Println()
@@ -265,4 +265,7 @@ func demonstrateFileSystemDemo() {
 	clime.SuccessLine("Advanced demo completed successfully!")
 	fmt.Println()
 	clime.InfoLine("This demonstrates the power and flexibility of Clime for creating sophisticated CLI interfaces.")
+
+	fmt.Println("\nPress Enter to exit...")
+	fmt.Scanln()
 }
