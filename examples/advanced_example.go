@@ -18,7 +18,6 @@ func main() {
 		WithStyle(clime.BannerStyleDouble).
 		WithColor(clime.BrightCyanColor).
 		WithBorderColor(clime.BrightBlueColor).
-		WithIcon("🌟").
 		Println()
 
 	fmt.Println()
