@@ -78,7 +78,6 @@ type Banner struct {
 	style       BannerStyle
 	color       *Color
 	borderColor *Color
-	icon        string
 	width       int
 	multiline   bool
 }
@@ -99,19 +98,15 @@ func NewBanner(message string, bannerType BannerType) *Banner {
 	case BannerSuccess:
 		banner.color = Success
 		banner.borderColor = Success
-		banner.icon = "✓"
 	case BannerWarning:
 		banner.color = Warning
 		banner.borderColor = Warning
-		banner.icon = "⚠"
 	case BannerError:
 		banner.color = Error
 		banner.borderColor = Error
-		banner.icon = "✗"
 	case BannerInfo:
 		banner.color = Info
 		banner.borderColor = Info
-		banner.icon = "ℹ"
 	}
 
 	return banner
@@ -135,12 +130,6 @@ func (b *Banner) WithBorderColor(color *Color) *Banner {
 	return b
 }
 
-// WithIcon sets a custom icon
-func (b *Banner) WithIcon(icon string) *Banner {
-	b.icon = icon
-	return b
-}
-
 // WithWidth sets the banner width
 func (b *Banner) WithWidth(width int) *Banner {
 	if width > 0 {
@@ -157,25 +146,24 @@ func (b *Banner) Multiline(enable bool) *Banner {
 
 // Render renders the banner and returns the string representation
 func (b *Banner) Render() string {
-	lines := b.prepareLines()
-	if len(lines) == 0 {
+	if b.message == "" {
 		return ""
 	}
 
+	b.calculateOptimalWidth()
+
 	var result strings.Builder
 
-	// Top border
-	result.WriteString(b.renderTopBorder(lines))
+	result.WriteString(b.renderTopBorder())
 	result.WriteString("\n")
 
-	// Content lines
+	lines := b.prepareLines()
 	for _, line := range lines {
 		result.WriteString(b.renderContentLine(line))
 		result.WriteString("\n")
 	}
 
-	// Bottom border
-	result.WriteString(b.renderBottomBorder(lines))
+	result.WriteString(b.renderBottomBorder())
 
 	return result.String()
 }
@@ -198,10 +186,6 @@ func (b *Banner) prepareLines() []string {
 
 	// Calculate available width for content
 	availableWidth := b.width - (2 * b.style.Padding) - 2 // 2 for borders
-
-	if b.icon != "" {
-		availableWidth -= len(b.icon) + 1 // +1 for space after icon
-	}
 
 	if availableWidth <= 0 {
 		availableWidth = 10
@@ -240,18 +224,8 @@ func (b *Banner) prepareLines() []string {
 }
 
 // renderTopBorder renders the top border
-func (b *Banner) renderTopBorder(lines []string) string {
-	if len(lines) == 0 {
-		return ""
-	}
-
-	maxLineLength := b.getMaxLineLength(lines)
-	borderWidth := maxLineLength + (2 * b.style.Padding)
-
-	if b.icon != "" {
-		borderWidth += len(b.icon) + 1
-	}
-
+func (b *Banner) renderTopBorder() string {
+	borderWidth := b.width - 2
 	border := b.style.TopLeft + strings.Repeat(b.style.Horizontal, borderWidth) + b.style.TopRight
 
 	if b.borderColor != nil {
@@ -261,18 +235,8 @@ func (b *Banner) renderTopBorder(lines []string) string {
 }
 
 // renderBottomBorder renders the bottom border
-func (b *Banner) renderBottomBorder(lines []string) string {
-	if len(lines) == 0 {
-		return ""
-	}
-
-	maxLineLength := b.getMaxLineLength(lines)
-	borderWidth := maxLineLength + (2 * b.style.Padding)
-
-	if b.icon != "" {
-		borderWidth += len(b.icon) + 1
-	}
-
+func (b *Banner) renderBottomBorder() string {
+	borderWidth := b.width - 2
 	border := b.style.BottomLeft + strings.Repeat(b.style.Horizontal, borderWidth) + b.style.BottomRight
 
 	if b.borderColor != nil {
@@ -281,8 +245,22 @@ func (b *Banner) renderBottomBorder(lines []string) string {
 	return border
 }
 
-// renderContentLine renders a content line
+// calculateOptimalWidth calculates the optimal banner width
+func (b *Banner) calculateOptimalWidth() {
+	lines := b.prepareLines()
+	maxLineLength := b.getMaxLineLength(lines)
+
+	requiredWidth := maxLineLength + (2 * b.style.Padding) + 2
+
+	if requiredWidth > b.width {
+		b.width = requiredWidth
+	}
+}
+
+// renderContentLine renders a single line of content with padding and border
 func (b *Banner) renderContentLine(line string) string {
+	availableWidth := b.width - 2
+
 	var content strings.Builder
 
 	if b.borderColor != nil {
@@ -293,28 +271,16 @@ func (b *Banner) renderContentLine(line string) string {
 
 	content.WriteString(strings.Repeat(" ", b.style.Padding))
 
-	if b.icon != "" {
-		if b.color != nil {
-			content.WriteString(b.color.Sprint(b.icon) + " ")
-		} else {
-			content.WriteString(b.icon + " ")
-		}
-	}
-
 	if b.color != nil {
 		content.WriteString(b.color.Sprint(line))
 	} else {
 		content.WriteString(line)
 	}
 
-	iconWidth := 0
-	if b.icon != "" {
-		iconWidth = len(b.icon) + 1
-	}
-
-	paddingNeeded := b.width - len(line) - iconWidth - (2 * b.style.Padding) - 2
-	if paddingNeeded > 0 {
-		content.WriteString(strings.Repeat(" ", paddingNeeded))
+	usedWidth := (2 * b.style.Padding) + len(line)
+	remainingSpace := availableWidth - usedWidth
+	if remainingSpace > 0 {
+		content.WriteString(strings.Repeat(" ", remainingSpace))
 	}
 
 	content.WriteString(strings.Repeat(" ", b.style.Padding))
@@ -380,14 +346,13 @@ func InfoLine(message string) {
 }
 
 // CustomBanner creates a custom banner with specific colors and style
-func CustomBanner(message, icon string, textColor, borderColor *Color, style BannerStyle) *Banner {
+func CustomBanner(message string, textColor, borderColor *Color, style BannerStyle) *Banner {
 	banner := &Banner{
 		message:     message,
 		bannerType:  BannerInfo,
 		style:       style,
 		color:       textColor,
 		borderColor: borderColor,
-		icon:        icon,
 		width:       NewTerminal().Width() - 4,
 		multiline:   true,
 	}

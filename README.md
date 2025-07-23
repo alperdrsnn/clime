@@ -83,6 +83,7 @@ func main() {
     clime.SuccessLine(fmt.Sprintf("Hello, %s! 👋", name))
 }
 ```
+<img src="./examples/readme/quick-start.gif" width="600">
 
 ## 📚 Usage Examples
 
@@ -100,6 +101,7 @@ fmt.Println(clime.BoldColor.Sprint("Bold text"))
 fmt.Println(clime.UnderlineColor.Sprint("Underlined text"))
 fmt.Println(clime.Rainbow("Rainbow text!"))
 ```
+<img src="./examples/readme/colors-and-text-formatting.png" width="600">
 
 ### Spinners
 
@@ -120,6 +122,7 @@ spinner2 := clime.NewSpinner().
 time.Sleep(3 * time.Second)
 spinner2.Success("Complete!")
 ```
+<img src="./examples/readme/spinners.gif" width="600">
 
 ### Progress Bars
 
@@ -129,15 +132,36 @@ bar := clime.NewProgressBar(100).
     WithLabel("Download").
     WithStyle(clime.ProgressStyleModern).
     WithColor(clime.GreenColor).
-    ShowRate(true).
-    ShowETA(true)
+    ShowRate(true)
+
+for i := 0; i <= 100; i += 5 {
+    bar.Set(int64(i))
+    bar.Print()
+    time.Sleep(100 * time.Millisecond)
+}
+bar.Finish()
+
+time.Sleep(1500 * time.Millisecond)
+clime.Clear()
 
 // Multi-progress bars
 multiBar := clime.NewMultiBar()
 bar1 := clime.NewProgressBar(100).WithLabel("Task 1")
 bar2 := clime.NewProgressBar(80).WithLabel("Task 2")
 multiBar.AddBar(bar1).AddBar(bar2)
+
+for i := 0; i <= 100; i += 2 {
+    if i <= 100 {
+        bar1.Set(int64(i))
+    }
+    if i <= 80 {
+        bar2.Set(int64(i))
+    }
+    multiBar.Print()
+    time.Sleep(50 * time.Millisecond)
+}
 ```
+<img src="./examples/readme/progress_bars.gif" width="600">
 
 ### Tables
 
@@ -153,6 +177,7 @@ table := clime.NewTable().
 
 table.Print()
 ```
+<img src="./examples/readme/tables.png">
 
 ### Boxes
 
@@ -164,7 +189,6 @@ box := clime.NewBox().
     WithStyle(clime.BoxStyleRounded).
     AddLine("System Status: Online").
     AddLine("Version: 1.0.0").
-    AddSeparator().
     AddText("This is a longer description that will be automatically wrapped.")
 
 box.Println()
@@ -174,6 +198,7 @@ clime.PrintSuccessBox("Success", "Operation completed!")
 clime.PrintWarningBox("Warning", "Check your configuration.")
 clime.PrintErrorBox("Error", "Something went wrong.")
 ```
+<img src="./examples/readme/box.png" width="600">
 
 ### Interactive Input
 
@@ -213,6 +238,7 @@ choice, err := clime.AutoComplete(clime.AutoCompleteConfig{
     MaxResults: 5,
 })
 ```
+<img src="./examples/readme/interactive.gif" width="600">
 
 ### Banners
 
@@ -226,9 +252,9 @@ clime.InfoBanner("New update available.")
 clime.NewBanner("Custom Message", clime.BannerInfo).
     WithStyle(clime.BannerStyleDouble).
     WithColor(clime.CyanColor).
-    WithIcon("🚀").
     Println()
 ```
+<img src="./examples/readme/banners.png" width="600">
 
 ### Terminal Utilities
 
