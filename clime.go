@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"golang.org/x/term"
 	"os"
+	"os/exec"
+	"strconv"
 	"strings"
 )
 
@@ -115,6 +117,28 @@ func getTerminalSize() (width, height int) {
 
 // getWindowsTerminalSize gets terminal size on Windows
 func getWindowsTerminalSize() (width, height int) {
-	//@TODO: Windows API call
-	return 0, 0
+	cmd := exec.Command("powershell", "-Command",
+		"$Host.UI.RawUI.BufferSize.Width; $Host.UI.RawUI.BufferSize.Height")
+
+	output, err := cmd.Output()
+	if err != nil {
+		return 0, 0
+	}
+
+	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+	if len(lines) < 2 {
+		return 0, 0
+	}
+
+	width, err = strconv.Atoi(strings.TrimSpace(lines[0]))
+	if err != nil {
+		return 0, 0
+	}
+
+	height, err = strconv.Atoi(strings.TrimSpace(lines[1]))
+	if err != nil {
+		return 0, 0
+	}
+
+	return width, height
 }
