@@ -81,6 +81,14 @@ func main() {
     // Interactive input
     name, _ := clime.Ask("What's your name?")
     clime.SuccessLine(fmt.Sprintf("Hello, %s! 👋", name))
+    
+    // Responsive box that adapts to terminal size
+    clime.NewBox().
+        WithTitle("Responsive Demo").
+        WithSmartWidth(0.8).  // 80% of terminal width
+        AddLine("This box adapts to your terminal size!").
+        AddLine("Try resizing your terminal and running again.").
+        Println()
 }
 ```
 <img src="./examples/readme/quick-start.gif" width="600">
@@ -240,6 +248,52 @@ choice, err := clime.AutoComplete(clime.AutoCompleteConfig{
 ```
 <img src="./examples/readme/interactive.gif" width="600">
 
+### Responsive Design
+
+```go
+// Smart width sizing (adapts to terminal width)
+clime.NewBox().
+    WithTitle("Responsive Box").
+    WithSmartWidth(0.7).  // 70% of terminal width
+    AddLine("This box adapts to terminal size").
+    Println()
+
+// Breakpoint-specific configurations
+box := clime.NewBox().
+    WithTitle("Multi-Breakpoint Box").
+    WithResponsiveConfig(clime.ResponsiveConfig{
+        XS: &clime.ElementConfig{Width: 30, Padding: 1, Compact: true},
+        SM: &clime.ElementConfig{Width: 50, Padding: 2},
+        MD: &clime.ElementConfig{Width: 70, Padding: 2},
+        LG: &clime.ElementConfig{Width: 90, Padding: 3},
+        XL: &clime.ElementConfig{Width: 120, Padding: 3, ShowFull: true},
+    }).
+    AddLine("Width and padding change based on terminal size").
+    AddLine("Try resizing your terminal and running again!")
+
+box.Println()
+
+// Responsive utility functions
+if clime.IsXS() {
+    clime.InfoLine("Very small terminal detected - using compact layout")
+} else if clime.IsMDOrLarger() {
+    clime.InfoLine("Large terminal detected - using full layout")
+}
+
+// Smart spacing
+padding := clime.SmartPadding()  // 0-2 based on screen size
+margin := clime.SmartMargin()    // 1-8 based on screen size
+
+// Optimal column calculation
+columns := clime.GetOptimalColumns(20)  // Content width: 20 chars
+fmt.Printf("Optimal columns for this terminal: %d\n", columns)
+
+// Manual refresh after terminal resize
+rm := clime.GetResponsiveManager()
+rm.RefreshBreakpoint()
+fmt.Printf("Current breakpoint: %s\n", rm.GetCurrentBreakpointName())
+```
+
 ### Banners
 
 ```go
@@ -306,6 +360,97 @@ Clime supports a full range of colors:
 **Bright Colors**: BrightRed, BrightGreen, BrightYellow, BrightBlue, etc.
 **Special Effects**: Rainbow text, gradients, background colors
 
+## 📱 Responsive Design System
+
+Clime includes a comprehensive responsive design system that adapts UI components to different terminal sizes, ensuring optimal user experience across various environments.
+
+### 🎯 Breakpoint System
+
+The responsive system uses 5 breakpoints to categorize terminal widths:
+
+```go
+XS: 0-59 chars    // Very small (mobile terminal, narrow SSH)
+SM: 60-79 chars   // Small (default terminal)  
+MD: 80-119 chars  // Medium (standard terminal)
+LG: 120-159 chars // Large (wide terminal)
+XL: 160+ chars    // Extra Large (ultra-wide displays)
+```
+
+### 🛠️ Smart Sizing Functions
+
+#### SmartWidth
+Automatically calculates element width based on terminal size and breakpoint:
+```go
+// 80% of terminal width with smart margins
+box := clime.NewBox().WithSmartWidth(0.8)
+```
+
+#### SmartPadding & SmartMargin
+Adaptive spacing that scales with screen size:
+```go
+// XS: 0 padding, SM: 1, MD: 1, LG: 2, XL: 2
+padding := clime.SmartPadding()
+
+// XS: 1 margin, SM: 2, MD: 4, LG: 6, XL: 8  
+margin := clime.SmartMargin()
+```
+
+### 🎛️ Responsive Configuration
+
+Define different configurations for each breakpoint:
+
+```go
+box := clime.NewBox().
+    WithTitle("Responsive Box").
+    WithResponsiveConfig(clime.ResponsiveConfig{
+        XS: &clime.ElementConfig{Width: 30, Padding: 1, Compact: true},
+        SM: &clime.ElementConfig{Width: 40, Padding: 2},
+        MD: &clime.ElementConfig{Width: 60, Padding: 2},
+        LG: &clime.ElementConfig{Width: 80, Padding: 3},
+        XL: &clime.ElementConfig{Width: 100, Padding: 3, ShowFull: true},
+    })
+```
+
+### 🔧 Utility Functions
+
+```go
+// Breakpoint detection
+if clime.IsXS() {
+    // Compact layout for very small terminals
+} else if clime.IsMDOrLarger() {
+    // Full-featured layout for larger terminals
+}
+
+// Optimal column calculation
+columns := clime.GetOptimalColumns(contentWidth)
+// XS: max 1, SM: max 2, MD: max 3, LG: max 4, XL: max 6
+
+// Manual breakpoint refresh (after terminal resize)
+rm := clime.GetResponsiveManager()
+rm.RefreshBreakpoint()
+```
+
+### 🎪 Use Cases
+
+**Perfect for:**
+- **Dashboard Applications**: Different layouts for different screen sizes
+- **Data Visualization**: Adaptive tables and charts
+- **Interactive CLIs**: Responsive menus and forms
+- **Monitoring Tools**: Compact vs detailed views
+
+**Example scenarios:**
+- SSH terminal (narrow) → Compact, single-column layout
+- Standard terminal → Balanced layout with moderate spacing
+- Ultra-wide display → Multi-column layout with generous spacing
+
+### 🚀 Future Enhancements
+
+- [ ] **Live Responsive Updates**: Real-time adaptation without restart
+- [ ] **Custom Breakpoints**: User-defined breakpoint values
+- [ ] **Responsive Tables**: Column hiding/showing based on width
+- [ ] **Adaptive Spinners**: Size-appropriate loading indicators
+- [ ] **Smart Text Wrapping**: Intelligent content reflow
+
 ## Supported Features
 
 ### ✅ Current Features
@@ -323,10 +468,14 @@ Clime supports a full range of colors:
 - [x] **TTY Detection**: Automatic terminal capability detection
 - [x] **Text Utilities**: Padding, truncation, wrapping
 - [x] **Multiple Input Types**: Confirmation, selection, validation
+- [x] **Responsive Design**: Breakpoint-based adaptive layouts and smart sizing
 
 ### 🚧 Planned Features (TODO)
 
 - [ ] **Enhanced Tables**: Row separators and advanced formatting
+- [ ] **Live Responsive Updates**: Real-time terminal resize detection and adaptation
+- [ ] **Responsive Tables**: Column hiding/showing based on terminal width
+- [ ] **Custom Breakpoints**: User-defined breakpoint values and responsive rules
 - [ ] **Windows Integration**: Native Windows API for improved terminal size detection
 - [ ] **Theme System**: Predefined color themes and custom theme support
 - [ ] **Advanced Layouts**: Grid systems and complex UI layouts

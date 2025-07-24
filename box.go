@@ -109,35 +109,39 @@ const (
 )
 
 type Box struct {
-	content     []string
-	title       string
-	style       BoxStyle
-	alignment   BoxAlignment
-	padding     int
-	width       int
-	height      int
-	color       *Color
-	borderColor *Color
-	titleColor  *Color
-	autoSize    bool
-	showBorder  bool
+	content          []string
+	title            string
+	style            BoxStyle
+	alignment        BoxAlignment
+	padding          int
+	width            int
+	height           int
+	color            *Color
+	borderColor      *Color
+	titleColor       *Color
+	autoSize         bool
+	showBorder       bool
+	ResponsiveConfig *ResponsiveConfig
+	useSmartSizing   bool
 }
 
 // NewBox creates a new box
 func NewBox() *Box {
-	terminal := NewTerminal()
-	return &Box{
-		content:     make([]string, 0),
-		style:       BoxStyleDefault,
-		alignment:   BoxAlignLeft,
-		padding:     1,
-		width:       terminal.Width() - 4, // Leave margins
-		color:       nil,
-		borderColor: DimColor,
-		titleColor:  BoldColor,
-		autoSize:    true,
-		showBorder:  true,
+	box := &Box{
+		content:        make([]string, 0),
+		style:          BoxStyleDefault,
+		alignment:      BoxAlignLeft,
+		padding:        SmartPadding(),
+		width:          SmartWidth(0.9), // Use 90% of smart width
+		color:          nil,
+		borderColor:    DimColor,
+		titleColor:     BoldColor,
+		autoSize:       true,
+		showBorder:     true,
+		useSmartSizing: true,
 	}
+
+	return box
 }
 
 // WithTitle sets the box title
@@ -171,7 +175,23 @@ func (b *Box) WithWidth(width int) *Box {
 	if width > 0 {
 		b.width = width
 		b.autoSize = false
+		b.useSmartSizing = false
 	}
+	return b
+}
+
+// WithSmartWidth enables smart responsive width sizing
+func (b *Box) WithSmartWidth(percentage float64) *Box {
+	b.width = SmartWidth(percentage)
+	b.useSmartSizing = true
+	b.autoSize = false
+	return b
+}
+
+// WithResponsiveConfig sets responsive configuration for different breakpoints
+func (b *Box) WithResponsiveConfig(config ResponsiveConfig) *Box {
+	b.ResponsiveConfig = &config
+	b.useSmartSizing = true
 	return b
 }
 
@@ -277,6 +297,11 @@ func (b *Box) Clear() *Box {
 
 // Render renders the box and returns the string representation
 func (b *Box) Render() string {
+	if b.useSmartSizing {
+		rm := GetResponsiveManager()
+		rm.RefreshBreakpoint()
+	}
+
 	if b.autoSize {
 		b.calculateSize()
 	}
@@ -313,8 +338,38 @@ func (b *Box) Println() {
 
 // calculateSize automatically calculates the optimal box size
 func (b *Box) calculateSize() {
+	if b.ResponsiveConfig != nil {
+		rm := GetResponsiveManager()
+		config := b.ResponsiveConfig.GetConfigForBreakpoint(rm.GetCurrentBreakpoint())
+		if config != nil {
+			if config.Width != nil {
+				b.width = *config.Width
+			}
+
+			if config.Height != nil {
+				b.height = *config.Height
+			}
+
+			if config.Padding != nil {
+				b.padding = *config.Padding
+			}
+
+			if config.Compact {
+				b.padding = min(b.padding, 1)
+			}
+			return
+		}
+	}
+
+	if b.useSmartSizing {
+		b.width = SmartWidth(0.9)
+		b.padding = SmartPadding()
+	}
+
 	if len(b.content) == 0 {
-		b.width = 20
+		if !b.useSmartSizing {
+			b.width = 20
+		}
 		b.height = 3
 		return
 	}
@@ -326,16 +381,18 @@ func (b *Box) calculateSize() {
 		}
 	}
 
-	requiredWidth := maxLineLength + (b.padding * 2)
-	if b.showBorder {
-		requiredWidth += 2
-	}
+	if !b.useSmartSizing {
+		requiredWidth := maxLineLength + (b.padding * 2)
+		if b.showBorder {
+			requiredWidth += 2
+		}
 
-	if b.title != "" && len(b.title)+4 > requiredWidth {
-		requiredWidth = len(b.title) + 4
-	}
+		if b.title != "" && len(b.title)+4 > requiredWidth {
+			requiredWidth = len(b.title) + 4
+		}
 
-	b.width = requiredWidth
+		b.width = requiredWidth
+	}
 
 	b.height = len(b.content) + (b.padding * 2)
 	if b.showBorder {
@@ -394,16 +451,16 @@ func (b *Box) renderTopBorder() string {
 				title := TruncateString(b.title, maxTitleLen)
 				leftPart := b.style.TopLeft + "─"
 				rightPart := "─" + strings.Repeat(b.style.Horizontal, borderWidth-len(title)-2) + b.style.TopRight
-				
+
 				if b.borderColor != nil {
 					leftPart = b.borderColor.Sprint(leftPart)
 					rightPart = b.borderColor.Sprint(rightPart)
 				}
-				
+
 				if b.titleColor != nil {
 					title = b.titleColor.Sprint(title)
 				}
-				
+
 				border = leftPart + title + rightPart
 			} else {
 				border = b.style.TopLeft + strings.Repeat(b.style.Horizontal, borderWidth) + b.style.TopRight
@@ -417,17 +474,17 @@ func (b *Box) renderTopBorder() string {
 
 			leftPart := b.style.TopLeft + strings.Repeat(b.style.Horizontal, leftPadding) + " "
 			rightPart := " " + strings.Repeat(b.style.Horizontal, rightPadding) + b.style.TopRight
-			
+
 			if b.borderColor != nil {
 				leftPart = b.borderColor.Sprint(leftPart)
 				rightPart = b.borderColor.Sprint(rightPart)
 			}
-			
+
 			titlePart := b.title
 			if b.titleColor != nil {
 				titlePart = b.titleColor.Sprint(b.title)
 			}
-			
+
 			border = leftPart + titlePart + rightPart
 		}
 	} else {
@@ -462,11 +519,22 @@ func (b *Box) renderContentLine(line string) string {
 		availableWidth -= 2
 	}
 
+	if availableWidth <= 0 {
+		availableWidth = 1
+	}
+
 	if len(line) > availableWidth {
 		line = TruncateString(line, availableWidth)
 	}
 
 	alignedLine := b.alignText(line, availableWidth)
+
+	// Ensure alignedLine is exactly the right width
+	if len(alignedLine) > availableWidth {
+		alignedLine = TruncateString(alignedLine, availableWidth)
+	} else if len(alignedLine) < availableWidth {
+		alignedLine = alignedLine + strings.Repeat(" ", availableWidth-len(alignedLine))
+	}
 
 	if b.color != nil {
 		alignedLine = b.color.Sprint(alignedLine)
