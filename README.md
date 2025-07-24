@@ -465,6 +465,7 @@ rm.RefreshBreakpoint()
 - [x] **Autocomplete**: Fuzzy matching, customizable options
 - [x] **Banners**: Success, warning, error, info with icons
 - [x] **Cross-platform**: Windows, macOS, Linux support
+- [x] **Windows Integration**: Native Windows API for improved terminal size detection
 - [x] **TTY Detection**: Automatic terminal capability detection
 - [x] **Text Utilities**: Padding, truncation, wrapping
 - [x] **Multiple Input Types**: Confirmation, selection, validation
@@ -476,7 +477,6 @@ rm.RefreshBreakpoint()
 - [ ] **Live Responsive Updates**: Real-time terminal resize detection and adaptation
 - [ ] **Responsive Tables**: Column hiding/showing based on terminal width
 - [ ] **Custom Breakpoints**: User-defined breakpoint values and responsive rules
-- [ ] **Windows Integration**: Native Windows API for improved terminal size detection
 - [ ] **Theme System**: Predefined color themes and custom theme support
 - [ ] **Advanced Layouts**: Grid systems and complex UI layouts
 - [ ] **Animation System**: Custom animations and transitions
