@@ -116,32 +116,34 @@ type TableColumn struct {
 }
 
 type Table struct {
-	columns     []TableColumn
-	rows        [][]string
-	style       TableStyle
-	headerColor *Color
-	borderColor *Color
-	showHeader  bool
-	showBorders bool
-	padding     int
-	autoResize  bool
-	maxWidth    int
+	columns          []TableColumn
+	rows             [][]string
+	style            TableStyle
+	headerColor      *Color
+	borderColor      *Color
+	showHeader       bool
+	showBorders      bool
+	padding          int
+	autoResize       bool
+	maxWidth         int
+	ResponsiveConfig *ResponsiveConfig
+	useSmartSizing   bool
 }
 
 // NewTable creates a new table
 func NewTable() *Table {
-	terminal := NewTerminal()
 	return &Table{
-		columns:     make([]TableColumn, 0),
-		rows:        make([][]string, 0),
-		style:       TableStyleDefault,
-		headerColor: BoldColor,
-		borderColor: DimColor,
-		showHeader:  true,
-		showBorders: true,
-		padding:     1,
-		autoResize:  true,
-		maxWidth:    terminal.Width(),
+		columns:        make([]TableColumn, 0),
+		rows:           make([][]string, 0),
+		style:          TableStyleDefault,
+		headerColor:    BoldColor,
+		borderColor:    DimColor,
+		showHeader:     true,
+		showBorders:    true,
+		padding:        SmartPadding(),
+		autoResize:     true,
+		maxWidth:       SmartWidth(0.95), // Use 95% of smart width
+		useSmartSizing: true,
 	}
 }
 
@@ -193,7 +195,22 @@ func (t *Table) AutoResize(enable bool) *Table {
 func (t *Table) WithMaxWidth(width int) *Table {
 	if width > 0 {
 		t.maxWidth = width
+		t.useSmartSizing = false
 	}
+	return t
+}
+
+// WithSmartWidth enables smart responsive width sizing
+func (t *Table) WithSmartWidth(percentage float64) *Table {
+	t.maxWidth = SmartWidth(percentage)
+	t.useSmartSizing = true
+	return t
+}
+
+// WithResponsiveConfig sets responsive configuration for different breakpoints
+func (t *Table) WithResponsiveConfig(config ResponsiveConfig) *Table {
+	t.ResponsiveConfig = &config
+	t.useSmartSizing = true
 	return t
 }
 
@@ -263,6 +280,12 @@ func (t *Table) Clear() *Table {
 func (t *Table) Render() string {
 	if len(t.columns) == 0 {
 		return ""
+	}
+
+	if t.useSmartSizing {
+		rm := GetResponsiveManager()
+		rm.RefreshBreakpoint()
+		t.calculateResponsiveSize()
 	}
 
 	t.calculateColumnWidths()
@@ -352,6 +375,32 @@ func (t *Table) calculateTotalWidth() int {
 	}
 
 	return totalWidth
+}
+
+// calculateResponsiveSize calculates responsive table size
+func (t *Table) calculateResponsiveSize() {
+	if t.ResponsiveConfig != nil {
+		rm := GetResponsiveManager()
+		config := t.ResponsiveConfig.GetConfigForBreakpoint(rm.GetCurrentBreakpoint())
+		if config != nil {
+			if config.Width != nil {
+				t.maxWidth = *config.Width
+			}
+			if config.Padding != nil {
+				t.padding = *config.Padding
+			}
+			if config.Compact {
+				t.padding = min(t.padding, 1)
+				t.showBorders = false
+			}
+			return
+		}
+	}
+
+	if t.useSmartSizing {
+		t.maxWidth = SmartWidth(0.95)
+		t.padding = SmartPadding()
+	}
 }
 
 // adjustColumnWidths adjusts column widths to fit within maxWidth

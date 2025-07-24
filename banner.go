@@ -73,25 +73,26 @@ const (
 )
 
 type Banner struct {
-	message     string
-	bannerType  BannerType
-	style       BannerStyle
-	color       *Color
-	borderColor *Color
-	width       int
-	multiline   bool
+	message          string
+	bannerType       BannerType
+	style            BannerStyle
+	color            *Color
+	borderColor      *Color
+	width            int
+	multiline        bool
+	ResponsiveConfig *ResponsiveConfig
+	useSmartSizing   bool
 }
 
 // NewBanner creates a new banner
 func NewBanner(message string, bannerType BannerType) *Banner {
-	terminal := NewTerminal()
-
 	banner := &Banner{
-		message:    message,
-		bannerType: bannerType,
-		style:      BannerStyleDefault,
-		width:      terminal.Width() - 4, // Leave some margin
-		multiline:  true,
+		message:        message,
+		bannerType:     bannerType,
+		style:          BannerStyleDefault,
+		width:          SmartWidth(0.9), // Use 90% of smart width
+		multiline:      true,
+		useSmartSizing: true,
 	}
 
 	switch bannerType {
@@ -134,7 +135,22 @@ func (b *Banner) WithBorderColor(color *Color) *Banner {
 func (b *Banner) WithWidth(width int) *Banner {
 	if width > 0 {
 		b.width = width
+		b.useSmartSizing = false
 	}
+	return b
+}
+
+// WithSmartWidth enables smart responsive width sizing
+func (b *Banner) WithSmartWidth(percentage float64) *Banner {
+	b.width = SmartWidth(percentage)
+	b.useSmartSizing = true
+	return b
+}
+
+// WithResponsiveConfig sets responsive configuration for different breakpoints
+func (b *Banner) WithResponsiveConfig(config ResponsiveConfig) *Banner {
+	b.ResponsiveConfig = &config
+	b.useSmartSizing = true
 	return b
 }
 
@@ -148,6 +164,12 @@ func (b *Banner) Multiline(enable bool) *Banner {
 func (b *Banner) Render() string {
 	if b.message == "" {
 		return ""
+	}
+
+	if b.useSmartSizing {
+		rm := GetResponsiveManager()
+		rm.RefreshBreakpoint()
+		b.calculateResponsiveSize()
 	}
 
 	b.calculateOptimalWidth()
@@ -221,6 +243,27 @@ func (b *Banner) prepareLines() []string {
 	}
 
 	return lines
+}
+
+// calculateResponsiveSize calculates responsive banner size
+func (b *Banner) calculateResponsiveSize() {
+	if b.ResponsiveConfig != nil {
+		rm := GetResponsiveManager()
+		config := b.ResponsiveConfig.GetConfigForBreakpoint(rm.GetCurrentBreakpoint())
+		if config != nil {
+			if config.Width != nil {
+				b.width = *config.Width
+			}
+			if config.Compact {
+				b.multiline = false
+			}
+			return
+		}
+	}
+
+	if b.useSmartSizing {
+		b.width = SmartWidth(0.9)
+	}
 }
 
 // renderTopBorder renders the top border

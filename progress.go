@@ -62,39 +62,41 @@ var (
 )
 
 type ProgressBar struct {
-	current     int64
-	total       int64
-	width       int
-	style       ProgressBarStyle
-	color       *Color
-	bgColor     *Color
-	label       string
-	showPercent bool
-	showCount   bool
-	showRate    bool
-	showETA     bool
-	startTime   time.Time
-	mu          sync.RWMutex
-	finished    bool
+	current          int64
+	total            int64
+	width            int
+	style            ProgressBarStyle
+	color            *Color
+	bgColor          *Color
+	label            string
+	showPercent      bool
+	showCount        bool
+	showRate         bool
+	showETA          bool
+	startTime        time.Time
+	mu               sync.RWMutex
+	finished         bool
+	ResponsiveConfig *ResponsiveConfig
+	useSmartSizing   bool
 }
 
 // NewProgressBar creates a new progress bar
 func NewProgressBar(total int64) *ProgressBar {
-	terminal := NewTerminal()
-	width := terminal.Width() - 30
-	if width < 20 {
-		width = 20
+	smartWidth := SmartWidth(0.6) // Use 60% of smart width
+	if smartWidth < 20 {
+		smartWidth = 20
 	}
 
 	return &ProgressBar{
-		total:       total,
-		width:       width,
-		style:       ProgressStyleDefault,
-		color:       GreenColor,
-		bgColor:     DimColor,
-		showPercent: true,
-		showCount:   true,
-		startTime:   time.Now(),
+		total:          total,
+		width:          smartWidth,
+		style:          ProgressStyleDefault,
+		color:          GreenColor,
+		bgColor:        DimColor,
+		showPercent:    true,
+		showCount:      true,
+		startTime:      time.Now(),
+		useSmartSizing: true,
 	}
 }
 
@@ -104,7 +106,26 @@ func (p *ProgressBar) WithWidth(width int) *ProgressBar {
 	defer p.mu.Unlock()
 	if width > 0 {
 		p.width = width
+		p.useSmartSizing = false
 	}
+	return p
+}
+
+// WithSmartWidth enables smart responsive width sizing
+func (p *ProgressBar) WithSmartWidth(percentage float64) *ProgressBar {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.width = SmartWidth(percentage)
+	p.useSmartSizing = true
+	return p
+}
+
+// WithResponsiveConfig sets responsive configuration for different breakpoints
+func (p *ProgressBar) WithResponsiveConfig(config ResponsiveConfig) *ProgressBar {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.ResponsiveConfig = &config
+	p.useSmartSizing = true
 	return p
 }
 
@@ -203,6 +224,10 @@ func (p *ProgressBar) Increment() {
 func (p *ProgressBar) Render() string {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
+
+	if p.useSmartSizing {
+		p.calculateResponsiveSize()
+	}
 
 	var progress float64
 	if p.total > 0 {
@@ -446,4 +471,49 @@ func ShowProgressWithStyle[T any](items []T, label string, style ProgressBarStyl
 
 	bar.Finish()
 	return nil
+}
+
+// calculateResponsiveSize calculates responsive progress bar size
+func (p *ProgressBar) calculateResponsiveSize() {
+	if p.ResponsiveConfig != nil {
+		rm := GetResponsiveManager()
+		config := p.ResponsiveConfig.GetConfigForBreakpoint(rm.GetCurrentBreakpoint())
+		if config != nil {
+			if config.Width != nil {
+				p.width = *config.Width
+			}
+			if config.Compact {
+				p.showPercent = false
+				p.showCount = false
+				p.showETA = false
+				p.showRate = false
+			}
+			return
+		}
+	}
+
+	if p.useSmartSizing {
+		rm := GetResponsiveManager()
+		rm.RefreshBreakpoint()
+		p.width = SmartWidth(0.6)
+		
+		switch rm.GetCurrentBreakpoint() {
+		case BreakpointXS:
+			p.width = min(p.width, 15)
+			p.showPercent = false
+			p.showCount = false
+			p.showETA = false
+			p.showRate = false
+		case BreakpointSM:
+			p.width = min(p.width, 25)
+			p.showETA = false
+			p.showRate = false
+		case BreakpointMD:
+			p.width = min(p.width, 40)
+		}
+		
+		if p.width < 10 {
+			p.width = 10
+		}
+	}
 }
