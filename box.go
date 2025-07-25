@@ -376,8 +376,8 @@ func (b *Box) calculateSize() {
 
 	maxLineLength := 0
 	for _, line := range b.content {
-		if len(line) > maxLineLength {
-			maxLineLength = len(line)
+		if getVisualWidth(line) > maxLineLength {
+			maxLineLength = getVisualWidth(line)
 		}
 	}
 
@@ -387,8 +387,8 @@ func (b *Box) calculateSize() {
 			requiredWidth += 2
 		}
 
-		if b.title != "" && len(b.title)+4 > requiredWidth {
-			requiredWidth = len(b.title) + 4
+		if b.title != "" && getVisualWidth(b.title)+4 > requiredWidth {
+			requiredWidth = getVisualWidth(b.title) + 4
 		}
 
 		b.width = requiredWidth
@@ -444,13 +444,13 @@ func (b *Box) renderTopBorder() string {
 	var border string
 
 	if b.title != "" {
-		titleLen := len(b.title)
+		titleLen := getVisualWidth(b.title)
 		if titleLen+4 >= borderWidth {
 			maxTitleLen := borderWidth - 4
 			if maxTitleLen > 0 {
 				title := TruncateString(b.title, maxTitleLen)
 				leftPart := b.style.TopLeft + "─"
-				rightPart := "─" + strings.Repeat(b.style.Horizontal, borderWidth-len(title)-2) + b.style.TopRight
+				rightPart := "─" + strings.Repeat(b.style.Horizontal, borderWidth-getVisualWidth(title)-2) + b.style.TopRight
 
 				if b.borderColor != nil {
 					leftPart = b.borderColor.Sprint(leftPart)
@@ -523,17 +523,17 @@ func (b *Box) renderContentLine(line string) string {
 		availableWidth = 1
 	}
 
-	if len(line) > availableWidth {
+	if getVisualWidth(line) > availableWidth {
 		line = TruncateString(line, availableWidth)
 	}
 
 	alignedLine := b.alignText(line, availableWidth)
 
 	// Ensure alignedLine is exactly the right width
-	if len(alignedLine) > availableWidth {
+	if getVisualWidth(alignedLine) > availableWidth {
 		alignedLine = TruncateString(alignedLine, availableWidth)
-	} else if len(alignedLine) < availableWidth {
-		alignedLine = alignedLine + strings.Repeat(" ", availableWidth-len(alignedLine))
+	} else if getVisualWidth(alignedLine) < availableWidth {
+		alignedLine = alignedLine + strings.Repeat(" ", availableWidth-getVisualWidth(alignedLine))
 	}
 
 	if b.color != nil {
@@ -560,7 +560,7 @@ func (b *Box) renderContentLine(line string) string {
 
 // alignText aligns text within the specified width
 func (b *Box) alignText(text string, width int) string {
-	textLen := len(text)
+	textLen := getVisualWidth(text)
 	if textLen >= width {
 		return text
 	}
@@ -596,7 +596,7 @@ func wrapText(text string, width int) []string {
 	for _, word := range words {
 		if currentLine.Len() == 0 {
 			currentLine.WriteString(word)
-		} else if currentLine.Len()+1+len(word) <= width {
+		} else if getVisualWidth(currentLine.String())+1+getVisualWidth(word) <= width {
 			currentLine.WriteString(" " + word)
 		} else {
 			lines = append(lines, currentLine.String())

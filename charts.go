@@ -131,8 +131,8 @@ func (bc *BarChart) renderHorizontal() string {
 
 	maxLabelWidth := 0
 	for _, data := range bc.Data {
-		if len(data.Label) > maxLabelWidth {
-			maxLabelWidth = len(data.Label)
+		if getVisualWidth(data.Label) > maxLabelWidth {
+			maxLabelWidth = getVisualWidth(data.Label)
 		}
 	}
 

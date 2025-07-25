@@ -222,7 +222,7 @@ func (b *Banner) prepareLines() []string {
 		for _, word := range words {
 			if currentLine.Len() == 0 {
 				currentLine.WriteString(word)
-			} else if currentLine.Len()+1+len(word) <= availableWidth {
+			} else if getVisualWidth(currentLine.String())+1+getVisualWidth(word) <= availableWidth {
 				currentLine.WriteString(" " + word)
 			} else {
 				lines = append(lines, currentLine.String())
@@ -235,7 +235,7 @@ func (b *Banner) prepareLines() []string {
 			lines = append(lines, currentLine.String())
 		}
 	} else {
-		if len(b.message) > availableWidth {
+		if getVisualWidth(b.message) > availableWidth {
 			lines = append(lines, TruncateString(b.message, availableWidth))
 		} else {
 			lines = append(lines, b.message)
@@ -320,7 +320,7 @@ func (b *Banner) renderContentLine(line string) string {
 		content.WriteString(line)
 	}
 
-	usedWidth := (2 * b.style.Padding) + len(line)
+	usedWidth := (2 * b.style.Padding) + getVisualWidth(line)
 	remainingSpace := availableWidth - usedWidth
 	if remainingSpace > 0 {
 		content.WriteString(strings.Repeat(" ", remainingSpace))
@@ -341,8 +341,8 @@ func (b *Banner) renderContentLine(line string) string {
 func (b *Banner) getMaxLineLength(lines []string) int {
 	maxLength := 0
 	for _, line := range lines {
-		if len(line) > maxLength {
-			maxLength = len(line)
+		if getVisualWidth(line) > maxLength {
+			maxLength = getVisualWidth(line)
 		}
 	}
 	return maxLength
@@ -411,7 +411,7 @@ func Header(title string) {
 		width = 80
 	}
 
-	padding := (width - len(title) - 4) / 2
+	padding := (width - getVisualWidth(title) - 4) / 2
 	if padding < 0 {
 		padding = 0
 	}
@@ -419,7 +419,7 @@ func Header(title string) {
 	header := strings.Repeat("=", width)
 	titleLine := "=" + strings.Repeat(" ", padding) + title + strings.Repeat(" ", padding)
 
-	for len(titleLine) < width-1 {
+	for getVisualWidth(titleLine) < width-1 {
 		titleLine += " "
 	}
 	titleLine += "="

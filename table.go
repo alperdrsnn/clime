@@ -341,14 +341,14 @@ func (t *Table) calculateColumnWidths() {
 
 	for i, column := range t.columns {
 		if column.Width == 0 {
-			t.columns[i].Width = len(column.Header)
+			t.columns[i].Width = getVisualWidth(column.Header)
 		}
 	}
 
 	for _, row := range t.rows {
 		for i, cell := range row {
-			if i < len(t.columns) && len(cell) > t.columns[i].Width {
-				t.columns[i].Width = len(cell)
+			if i < len(t.columns) && getVisualWidth(cell) > t.columns[i].Width {
+				t.columns[i].Width = getVisualWidth(cell)
 			}
 		}
 	}
@@ -561,11 +561,11 @@ func (t *Table) renderDataRow(rowData []string) string {
 
 // formatCell formats a cell with proper alignment and padding
 func (t *Table) formatCell(content string, width int, alignment TableAlignment) string {
-	if len(content) > width-t.padding*2 {
+	if getVisualWidth(content) > width-t.padding*2 {
 		content = TruncateString(content, width-t.padding*2)
 	}
 
-	contentWidth := len(content)
+	contentWidth := getVisualWidth(content)
 	totalPadding := width - contentWidth
 	leftPadding := t.padding
 	rightPadding := totalPadding - leftPadding
