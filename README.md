@@ -311,6 +311,21 @@ clime.NewBanner("Custom Message", clime.BannerInfo).
 ```
 <img src="./examples/readme/banners.png" width="600">
 
+### Charts
+
+```go
+clime.NewBarChart("Sales by Region").
+    AddData("North", 85.5, clime.BlueColor).
+    AddData("South", 72.3, clime.GreenColor).
+    AddData("East", 91.2, clime.YellowColor).
+    AddData("West", 68.7, clime.RedColor).
+    AddData("Central", 79.4, clime.MagentaColor).
+    SetHorizontal(true).
+    SetShowValues(true).
+    Println()
+```
+<img src="./examples/readme/charts.png" width="600">
+
 ### Terminal Utilities
 
 ```go
