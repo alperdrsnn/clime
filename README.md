@@ -27,6 +27,7 @@ Clime provides a comprehensive set of tools for creating beautiful command-line 
 - **Box Styles**: Default, Rounded, Bold, Double
 - **Banner Types**: Success, Warning, Error, Info with custom icons
 - **Color Support**: Full palette including bright colors and gradients
+- **Theme System**: 5 predefined themes with customizable colors
 
 ### 🖥️ Platform Support
 - **Cross-platform**: Windows, macOS, Linux
@@ -470,6 +471,7 @@ rm.RefreshBreakpoint()
 - [x] **Text Utilities**: Padding, truncation, wrapping
 - [x] **Multiple Input Types**: Confirmation, selection, validation
 - [x] **Responsive Design**: Breakpoint-based adaptive layouts and smart sizing
+- [x] **Theme System**: Predefined color themes and custom theme support
 
 ### 🚧 Planned Features (TODO)
 
@@ -477,7 +479,6 @@ rm.RefreshBreakpoint()
 - [ ] **Live Responsive Updates**: Real-time terminal resize detection and adaptation
 - [ ] **Responsive Tables**: Column hiding/showing based on terminal width
 - [ ] **Custom Breakpoints**: User-defined breakpoint values and responsive rules
-- [ ] **Theme System**: Predefined color themes and custom theme support
 - [ ] **Advanced Layouts**: Grid systems and complex UI layouts
 - [ ] **Animation System**: Custom animations and transitions
 - [ ] **Configuration Files**: JSON/YAML configuration support

@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"time"
 	"github.com/alperdrsnn/clime"
+	"time"
 )
 
 func main() {
@@ -14,16 +14,16 @@ func main() {
 	demonstrateResponsiveTables()
 	demonstrateResponsiveBanners()
 	demonstrateResponsiveProgressBars()
-	
+
 	showRefreshDemo()
 }
 
 func showCurrentBreakpoint() {
 	rm := clime.GetResponsiveManager()
-	
+
 	fmt.Printf("Current breakpoint: %s\n", clime.BoldColor.Sprint(rm.GetCurrentBreakpointName()))
 	fmt.Printf("Terminal type: %s\n", getTerminalType(rm.GetCurrentBreakpoint()))
-	
+
 	fmt.Println("\nBreakpoint ranges:")
 	for _, bp := range clime.Breakpoints {
 		status := "inactive"
@@ -193,25 +193,25 @@ func demonstrateResponsiveProgressBars() {
 func showRefreshDemo() {
 	clime.InfoBanner("🔄 Manual Refresh Demo")
 	fmt.Println()
-	
+
 	fmt.Println("Try resizing your terminal, then press 'r' to refresh.")
 	fmt.Println("Press 'q' to quit the demo.")
 	fmt.Println()
-	
+
 	for {
 		var input string
 		fmt.Print("Command (r=refresh, q=quit): ")
 		fmt.Scanln(&input)
-		
+
 		switch input {
 		case "r", "R":
 			// Refresh and show updated info
 			rm := clime.GetResponsiveManager()
 			rm.RefreshBreakpoint()
-			
+
 			fmt.Println("\n" + clime.Success.Sprint("Breakpoint refreshed!"))
 			showCurrentBreakpoint()
-			
+
 			// Show updated responsive box
 			clime.NewBox().
 				WithTitle("Updated Responsive Box").
@@ -224,7 +224,7 @@ func showRefreshDemo() {
 			clime.NewBanner("Responsive system is working! 🚀", clime.BannerSuccess).
 				WithSmartWidth(0.8).
 				Println()
-			
+
 		case "q", "Q":
 			fmt.Println("Demo completed. Goodbye!")
 			return
