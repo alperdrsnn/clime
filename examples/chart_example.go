@@ -10,6 +10,7 @@ func main() {
 	clime.SetTheme("colorful")
 
 	demonstrateBarCharts()
+	demonstratePieCharts()
 
 	fmt.Println("\nPress Enter to exit...")
 	fmt.Scanln()
@@ -49,5 +50,21 @@ func demonstrateBarCharts() {
 		WithWidth(60).
 		SetHorizontal(true).
 		SetShowValues(true).
+		Println()
+}
+
+func demonstratePieCharts() {
+	clime.InfoBanner("Pie Chart")
+	fmt.Println()
+
+	clime.NewPieChart("Browser Usage").
+		AddData("Chrome", 48.5, clime.BlueColor).
+		AddData("Test", 20.0, clime.MagentaColor).
+		AddData("Firefox", 18.2, clime.RedColor).
+		AddData("Safari", 9.8, clime.GreenColor).
+		AddData("Edge", 3.5, clime.YellowColor).
+		WithRadius(6).
+		SetShowPercentages(true).
+		SetShowLegend(true).
 		Println()
 }
