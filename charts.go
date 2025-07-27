@@ -395,3 +395,133 @@ func (pc *PieChart) Render() string {
 
 	return result.String()
 }
+
+// Histogram creates a simple histogram
+type Histogram struct {
+	Title string
+	Data  []float64
+	Bins  int
+	Width int
+	Color *Color
+}
+
+// NewHistogram creates a new histogram
+func NewHistogram(title string, data []float64) *Histogram {
+	return &Histogram{
+		Title: title,
+		Data:  data,
+		Bins:  10,
+		Width: SmartWidth(0.8),
+		Color: BlueColor,
+	}
+}
+
+// WithBins sets the number of bins
+func (h *Histogram) WithBins(bins int) *Histogram {
+	h.Bins = bins
+	return h
+}
+
+// WithWidth sets the histogram width
+func (h *Histogram) WithWidth(width int) *Histogram {
+	h.Width = width
+	return h
+}
+
+// WithColor sets the histogram color
+func (h *Histogram) WithColor(color *Color) *Histogram {
+	h.Color = color
+	return h
+}
+
+// Print renders and prints the histogram
+func (h *Histogram) Print() {
+	fmt.Print(h.Render())
+}
+
+// Println renders and prints the histogram with newline
+func (h *Histogram) Println() {
+	fmt.Println(h.Render())
+}
+
+// Render generates the histogram string
+func (h *Histogram) Render() string {
+	if len(h.Data) == 0 {
+		return ""
+	}
+
+	var result strings.Builder
+
+	if h.Title != "" {
+		titleLine := fmt.Sprintf("📈 %s", h.Title)
+		result.WriteString(BoldColor.Sprint(titleLine) + "\n\n")
+	}
+
+	minimum, maximum := h.Data[0], h.Data[0]
+	for _, value := range h.Data {
+		if value < minimum {
+			minimum = value
+		}
+		if value > maximum {
+			maximum = value
+		}
+	}
+
+	binWidth := (maximum - minimum) / float64(h.Bins)
+	counts := make([]int, h.Bins)
+
+	for _, value := range h.Data {
+		binIndex := int((value - minimum) / binWidth)
+		if binIndex >= h.Bins {
+			binIndex = h.Bins - 1
+		}
+		counts[binIndex]++
+	}
+
+	maxCount := 0
+	for _, count := range counts {
+		if count > maxCount {
+			maxCount = count
+		}
+	}
+
+	barWidth := (h.Width - 20) / h.Bins
+	if barWidth < 1 {
+		barWidth = 1
+	}
+
+	height := 10
+	for row := height; row > 0; row-- {
+		threshold := (float64(row) / float64(height)) * float64(maxCount)
+
+		for i, count := range counts {
+			if i > 0 {
+				result.WriteString(" ")
+			}
+
+			if float64(count) >= threshold {
+				bar := strings.Repeat("█", barWidth)
+				result.WriteString(h.Color.Sprint(bar))
+			} else {
+				bar := strings.Repeat(" ", barWidth)
+				result.WriteString(bar)
+			}
+		}
+		result.WriteString("\n")
+	}
+
+	for i := 0; i < h.Bins; i++ {
+		if i > 0 {
+			result.WriteString(" ")
+		}
+
+		binStart := minimum + float64(i)*binWidth
+		label := fmt.Sprintf("%.1f", binStart)
+		label = TruncateString(label, barWidth)
+		label = PadString(label, barWidth)
+		result.WriteString(DimColor.Sprint(label))
+	}
+	result.WriteString("\n")
+
+	return result.String()
+}
