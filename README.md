@@ -487,6 +487,7 @@ rm.RefreshBreakpoint()
 - [x] **Multiple Input Types**: Confirmation, selection, validation
 - [x] **Responsive Design**: Breakpoint-based adaptive layouts and smart sizing
 - [x] **Theme System**: Predefined color themes and custom theme support
+- [x] **Chart Components**: Simple ASCII charts and graphs
 
 ### 🚧 Planned Features (TODO)
 
@@ -500,7 +501,6 @@ rm.RefreshBreakpoint()
 - [ ] **Logging Integration**: Built-in logging with styled output
 - [ ] **Plugin System**: Extensible component architecture
 - [ ] **Interactive Menus**: Navigation menus and selection interfaces
-- [ ] **Chart Components**: Simple ASCII charts and graphs
 
 ## 🤝 Contributing
 
