@@ -3,11 +3,13 @@ package clime
 import (
 	"bufio"
 	"fmt"
-	"golang.org/x/term"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 	"unicode"
+
+	"golang.org/x/term"
 )
 
 type InputConfig struct {
@@ -105,13 +107,37 @@ func Confirm(config ConfirmConfig) (bool, error) {
 	}
 }
 
+// Checking if ANSI is available
+func canUseANSI() bool {
+	if !term.IsTerminal(int(os.Stdout.Fd())) || !term.IsTerminal(int(os.Stdin.Fd())) {
+		return false
+	}
+
+	if runtime.GOOS == "windows" && os.Getenv("WT_SESSION") != "" {
+		return true
+	}
+
+	termEnv := os.Getenv("TERM")
+	if termEnv == "" {
+		return false
+	}
+
+	ansiTerms := []string{"xterm", "xterm-256color", "screen", "screen-256color", "tmux", "rxvt"}
+	for _, t := range ansiTerms {
+		if strings.Contains(termEnv, t) {
+			return true
+		}
+	}
+	return false
+}
+
 // Select shows a single selection prompt with arrow key navigation
 func Select(config SelectConfig) (int, error) {
 	if len(config.Options) == 0 {
 		return 0, fmt.Errorf("no options provided")
 	}
 
-	if term.IsTerminal(int(os.Stdin.Fd())) {
+	if canUseANSI() {
 		return selectInteractive(config)
 	}
 
@@ -245,7 +271,7 @@ func MultiSelect(config SelectConfig) ([]int, error) {
 		return nil, fmt.Errorf("no options provided")
 	}
 
-	if term.IsTerminal(int(os.Stdin.Fd())) {
+	if canUseANSI() {
 		return multiSelectInteractive(config)
 	}
 
