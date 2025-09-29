@@ -113,21 +113,29 @@ func canUseANSI() bool {
 		return false
 	}
 
-	if runtime.GOOS == "windows" && os.Getenv("WT_SESSION") != "" {
+	if runtime.GOOS == "windows" {
+		if os.Getenv("WT_SESSION") != "" || os.Getenv("ConEmuPID") != "" {
+			return true
+		}
 		return true
 	}
 
 	termEnv := os.Getenv("TERM")
-	if termEnv == "" {
+	if termEnv == "" && runtime.GOOS != "linux" {
 		return false
 	}
 
-	ansiTerms := []string{"xterm", "xterm-256color", "screen", "screen-256color", "tmux", "rxvt"}
+	ansiTerms := []string{"xterm", "xterm-256color", "screen", "screen-256color", "tmux", "rxvt", "foot", "kitty", "alacritty", "gnome", "konsole"}
 	for _, t := range ansiTerms {
-		if strings.Contains(termEnv, t) {
+		if strings.Contains(strings.ToLower(termEnv), strings.ToLower(t)) {
 			return true
 		}
 	}
+	
+	if runtime.GOOS == "linux" {
+		return true
+	}
+	
 	return false
 }
 
@@ -173,7 +181,7 @@ func selectInteractive(config SelectConfig) (int, error) {
 			case 13:
 				clearSelectDisplay(len(config.Options) + 2)
 				fmt.Printf("%s %s\n", Info.Sprint("?"), config.Label)
-				fmt.Printf("  %s %s\n", Success.Sprint("→"), config.Options[currentSelection])
+				fmt.Printf("  %s %s\n", Success.Sprint("✓"), config.Options[currentSelection])
 				return currentSelection, nil
 				
 			case 27:
@@ -255,13 +263,18 @@ func displaySelectOptions(config SelectConfig, currentSelection int) {
 }
 
 func refreshSelectDisplay(config SelectConfig, currentSelection int) {
-	fmt.Printf("\033[%dA", len(config.Options)+2)
+	lines := len(config.Options) + 2
+	for i := 0; i < lines; i++ {
+		fmt.Print("\033[A")
+	}
 	fmt.Print("\033[J")
 	displaySelectOptions(config, currentSelection)
 }
 
 func clearSelectDisplay(lines int) {
-	fmt.Printf("\033[%dA", lines)
+	for i := 0; i < lines; i++ {
+		fmt.Print("\033[A")
+	}
 	fmt.Print("\033[J")
 }
 
